@@ -4,6 +4,7 @@ This is a [plugin](https://getanalytics.io/plugins/) for [Analytics](https://get
 ## Installation
 
 ```
+npm install analytics
 npm install --save analytics-plugin-web3analytics
 ```
 
