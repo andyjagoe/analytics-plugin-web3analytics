@@ -1,8 +1,19 @@
 {
   "name": "analytics-plugin-web3analytics",
-  "version": "0.1.1",
+  "description": "Web3 Analytics plugin for the Analytics project",
+  "author": "Andy Jagoe",
+  "keywords": ["web3", "analytics"],
+  "version": "0.1.2",
   "license": "(Apache-2.0 OR MIT)",
   "main": "./src/index.js",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/andyjagoe/analytics-plugin-web3analytics.git"
+  },
+  "homepage": "https://github.com/andyjagoe/analytics-plugin-web3analytics",
+  "bugs": {
+    "url": "https://github.com/andyjagoe/analytics-plugin-web3analytics/issues"
+  },  
   "dependencies": {
     "@ceramicnetwork/http-client": "^1.5.7",
     "@glazed/datamodel": "^0.2.0",
