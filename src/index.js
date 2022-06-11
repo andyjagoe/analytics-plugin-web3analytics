@@ -28,7 +28,7 @@ const dataStore = new DIDDataStore({ ceramic, loader, model })
 
 export default function web3Analytics(userConfig) {
   const appId = userConfig.appId
-  const nodeUrl = userConfig.nodeUrl
+  const jsonRpcUrl = userConfig.jsonRpcUrl
   let authenticatedDID
   let q_ = Promise.resolve();
 
@@ -52,7 +52,7 @@ export default function web3Analytics(userConfig) {
 
   async function checkAppRegistration() {
     if (!ethers.utils.isAddress(appId)) return false;
-    const provider = new ethers.providers.JsonRpcProvider(nodeUrl);
+    const provider = new ethers.providers.JsonRpcProvider(jsonRpcUrl);
     const contract = await new
     ethers.Contract(
       WEB3ANALYTICS_ADDRESS, 
@@ -73,7 +73,7 @@ export default function web3Analytics(userConfig) {
     }
 
     const web3provider = new 
-      Web3HttpProvider(nodeUrl)
+      Web3HttpProvider(jsonRpcUrl)
 
     let gsnProvider =
     await RelayProvider.newProvider({
