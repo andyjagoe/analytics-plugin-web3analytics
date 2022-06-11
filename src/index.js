@@ -2,7 +2,7 @@ import { CeramicClient } from '@ceramicnetwork/http-client'
 import { TileLoader } from '@glazed/tile-loader'
 import { DID } from 'dids';
 import { Secp256k1Provider } from 'key-did-provider-secp256k1'
-import { getResolver } from 'key-did-resolver'
+import KeyResolver from 'key-did-resolver'
 import { DataModel } from '@glazed/datamodel'
 import { DIDDataStore } from '@glazed/did-datastore'
 import { ethers } from "ethers"
@@ -37,7 +37,7 @@ export default function web3Analytics(userConfig) {
   async function authenticateCeramic(seed) {
       const provider = new Secp256k1Provider(seed)
       console.log(provider)
-      const did = new DID({ provider, resolver: getResolver() })
+      const did = new DID({ provider, resolver: KeyResolver.getResolver() })
       console.log(did)
 
       // Authenticate the DID with the provider

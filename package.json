@@ -3,7 +3,6 @@
   "version": "0.1.0",
   "license": "(Apache-2.0 OR MIT)",
   "main": "./src/index.js",
-  "type": "module",
   "dependencies": {
     "@ceramicnetwork/http-client": "^1.5.7",
     "@glazed/datamodel": "^0.2.0",
