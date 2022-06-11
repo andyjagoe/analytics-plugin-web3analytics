@@ -5,7 +5,7 @@ This is a [plugin](https://getanalytics.io/plugins/) for [Analytics](https://get
 
 ```
 npm install analytics
-npm install --save analytics-plugin-web3analytics
+npm install analytics-plugin-web3analytics
 ```
 
 ## Usage
