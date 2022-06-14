@@ -1,5 +1,6 @@
 const path = require('path');
 const webpack = require('webpack');
+const { WebpackDeduplicationPlugin } = require('webpack-deduplication-plugin');
 
 
 module.exports = {
@@ -28,6 +29,9 @@ module.exports = {
         }),
         new webpack.ProvidePlugin({
             process: 'process/browser',
+        }),
+        new WebpackDeduplicationPlugin({
+            cacheDir: './cache',
         }),
     ],
     resolve: {
