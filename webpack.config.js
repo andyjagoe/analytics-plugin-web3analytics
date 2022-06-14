@@ -17,7 +17,7 @@ module.exports = {
     },
     output: {
         path: path.resolve(__dirname, 'dist'),
-        filename: 'web3analytics.js',
+        filename: 'web3analytics.min.js',
         library: {
             name: 'web3analytics',
             type: 'umd',
