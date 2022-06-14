@@ -3,10 +3,14 @@ import { TileLoader } from '@glazed/tile-loader'
 import { DID } from 'dids';
 import { Secp256k1Provider } from 'key-did-provider-secp256k1'
 import KeyResolver from 'key-did-resolver'
+import {getResolver} from 'key-did-resolver'
 import { DataModel } from '@glazed/datamodel'
 import { DIDDataStore } from '@glazed/did-datastore'
-import { ethers } from "ethers"
-import * as u8a from 'uint8arrays'
+import { JsonRpcProvider, Web3Provider } from '@ethersproject/providers'
+import { Contract } from '@ethersproject/contracts'
+import { isAddress } from '@ethersproject/address'
+import { Wallet } from '@ethersproject/wallet'
+import { toString as u8aToString } from 'uint8arrays'
 import modelAliases from './model.json'
 import { RelayProvider } from "@opengsn/provider"
 import Web3AnalyticsABI from "./Web3AnalyticsABI.json"
@@ -51,10 +55,10 @@ export default function web3Analytics(userConfig) {
   }
 
   async function checkAppRegistration() {
-    if (!ethers.utils.isAddress(appId)) return false;
-    const provider = new ethers.providers.JsonRpcProvider(jsonRpcUrl);
+    if (!isAddress(appId)) return false;
+    const provider = new JsonRpcProvider(jsonRpcUrl);
     const contract = await new
-    ethers.Contract(
+    Contract(
       WEB3ANALYTICS_ADDRESS, 
       Web3AnalyticsABI,
       provider
@@ -80,13 +84,13 @@ export default function web3Analytics(userConfig) {
       provider: web3provider,
       config: confStandard }).init()
 
-    const signer = new ethers.Wallet(privateKey)
+    const signer = new Wallet(privateKey)
     gsnProvider.addAccount(signer.privateKey)
 
-    const provider = new ethers.providers.Web3Provider(gsnProvider)
+    const provider = new Web3Provider(gsnProvider)
 
     const contract = await new
-    ethers.Contract(WEB3ANALYTICS_ADDRESS, Web3AnalyticsABI,
+    Contract(WEB3ANALYTICS_ADDRESS, Web3AnalyticsABI,
       provider.getSigner(signer.address, signer.privateKey))
 
 
@@ -108,7 +112,6 @@ export default function web3Analytics(userConfig) {
     console.log(transaction)
     const receipt = await provider.waitForTransaction(transaction.hash)
     console.log(receipt)
-
   }
 
   function queue(fn) {
@@ -164,7 +167,7 @@ export default function web3Analytics(userConfig) {
           seed = new Uint8Array(JSON.parse(localStorage.getItem('ceramicSeed')));
       }
       
-      const privateKey = "0x"+ u8a.toString(seed, 'base16')
+      const privateKey = "0x"+ u8aToString(seed, 'base16')
 
       // Authenticate Ceramic
       authenticatedDID = await authenticateCeramic(seed);

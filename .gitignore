@@ -9,7 +9,15 @@
 /coverage
 
 # production
-/build
+/dist
+
+# analyze
+
+stats.json
+
+# build
+
+/cache
 
 # misc
 .DS_Store

@@ -2,10 +2,13 @@
   "name": "analytics-plugin-web3analytics",
   "description": "Web3 Analytics plugin for the Analytics project",
   "author": "Andy Jagoe",
-  "keywords": ["web3", "analytics"],
-  "version": "0.1.3",
+  "keywords": [
+    "web3",
+    "analytics"
+  ],
+  "version": "0.1.4",
   "license": "(Apache-2.0 OR MIT)",
-  "main": "./src/index.js",
+  "main": "./dist/index.js",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/andyjagoe/analytics-plugin-web3analytics.git"
@@ -13,18 +16,53 @@
   "homepage": "https://github.com/andyjagoe/analytics-plugin-web3analytics",
   "bugs": {
     "url": "https://github.com/andyjagoe/analytics-plugin-web3analytics/issues"
-  },  
+  },
+  "files": [
+    "dist/*"
+  ],
+  "scripts": {
+    "prebuild": "npx babel ./src -d ./dist --copy-files",
+    "build": "npx webpack",
+    "prepare": "yarn build",
+    "prepublishOnly": "yarn build",
+    "preanalyze": "npx webpack --json > stats.json",
+    "analyze": "npx webpack-bundle-analyzer stats.json"
+  },
   "dependencies": {
-    "@ceramicnetwork/http-client": "^1.5.7",
+    "@ceramicnetwork/http-client": "^2.0.4",
+    "@ethersproject/address": "^5.6.1",
+    "@ethersproject/contracts": "^5.6.2",
+    "@ethersproject/providers": "^5.6.8",
+    "@ethersproject/wallet": "^5.6.2",
     "@glazed/datamodel": "^0.2.0",
     "@glazed/did-datastore": "^0.2.3",
     "@glazed/tile-loader": "^0.1.3",
     "@opengsn/provider": "^2.2.6",
-    "dids": "^2.4.3",
-    "ethers": "^5.6.4",
+    "dids": "^3.2.0",
     "key-did-provider-secp256k1": "^1.0.0",
     "key-did-resolver": "^1.4.4",
     "uint8arrays": "^3.0.0",
     "web3-providers-http": "^1.7.3"
+  },
+  "devDependencies": {
+    "@babel/cli": "^7.17.10",
+    "@babel/core": "^7.18.2",
+    "@babel/preset-env": "^7.18.2",
+    "assert": "^2.0.0",
+    "babel-loader": "^8.2.5",
+    "browserify-fs": "^1.0.0",
+    "browserify-zlib": "^0.2.0",
+    "buffer": "^6.0.3",
+    "crypto-browserify": "^3.12.0",
+    "https-browserify": "^1.0.0",
+    "os-browserify": "^0.3.0",
+    "path-browserify": "^1.0.1",
+    "stream-browserify": "^3.0.0",
+    "stream-http": "^3.2.0",
+    "url": "^0.11.0",
+    "webpack": "^5.73.0",
+    "webpack-bundle-analyzer": "^4.5.0",
+    "webpack-cli": "^4.10.0",
+    "webpack-deduplication-plugin": "^0.0.8"
   }
 }
