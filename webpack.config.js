@@ -1,7 +1,10 @@
-var webpack = require('webpack');
+const path = require('path');
+const webpack = require('webpack');
+
 
 module.exports = {
     entry: './src/index.js',
+    mode: "production",
     module: {
         rules: [
           {
@@ -10,6 +13,14 @@ module.exports = {
             use: ['babel-loader']
           }
         ]
+    },
+    output: {
+        path: path.resolve(__dirname, 'dist'),
+        filename: 'web3analytics.js',
+        library: {
+            name: 'web3analytics',
+            type: 'umd',
+        },
     },
     plugins: [
         new webpack.ProvidePlugin({
