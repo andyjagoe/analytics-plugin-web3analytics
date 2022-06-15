@@ -3,7 +3,6 @@ import { TileLoader } from '@glazed/tile-loader'
 import { DID } from 'dids';
 import { Secp256k1Provider } from 'key-did-provider-secp256k1'
 import KeyResolver from 'key-did-resolver'
-import {getResolver} from 'key-did-resolver'
 import { DataModel } from '@glazed/datamodel'
 import { DIDDataStore } from '@glazed/did-datastore'
 import { JsonRpcProvider, Web3Provider } from '@ethersproject/providers'
@@ -18,8 +17,8 @@ import Web3HttpProvider from 'web3-providers-http'
 
 
 // Contract Addresses
-const WEB3ANALYTICS_ADDRESS = '0x6f521f66D4B8f223326194B8580230CC80d21A2F'
-const WEB3ANALYTICS_PAYMASTER_ADDRESS = '0xc4a9Dd8785B50Ff51E7FAd38950D7Bb039fE21ab'
+const WEB3ANALYTICS_ADDRESS = '0x93e661241b3f4ad92081ABf488835a02EB703594'
+const WEB3ANALYTICS_PAYMASTER_ADDRESS = '0x710733adb74679139Df88c216d4532189C1c6378'
 
 // Set up Ceramic
 const ceramic = new CeramicClient('https://ceramic-clay.3boxlabs.com')
