@@ -14,6 +14,7 @@ import modelAliases from './model.json'
 import { RelayProvider } from "@opengsn/provider"
 import Web3AnalyticsABI from "./Web3AnalyticsABI.json"
 import Web3HttpProvider from 'web3-providers-http'
+import flatten from 'flat'
 
 
 // Contract Addresses
@@ -120,14 +121,24 @@ export default function web3Analytics(userConfig) {
 
   async function sendEvent(payload, authenticatedDID) {
     // Add data to Event payload
+    payload.appId = appId
     payload.did = authenticatedDID.id
-    payload.updated_at = payload.meta.ts
+    payload.updated_at = Date.now()
 
-    console.log(payload);
+    // Flatten payload and add original as json string
+    let flattened = payload
+    try {
+      flattened = flatten(payload)
+    } catch (err) {
+      console.log(err)
+    }
+    flattened._raw = JSON.stringify(payload)
+
+    console.log(flattened);
 
     // Create Event in Ceramic
     const [doc, eventsList] = await Promise.all([
-        model.createTile('Event', payload),
+        model.createTile('Event', flattened),
         dataStore.get('events'),
     ])
 
