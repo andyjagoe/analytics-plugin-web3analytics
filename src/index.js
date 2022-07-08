@@ -18,8 +18,8 @@ import flatten from 'flat'
 
 
 // Contract Addresses
-const WEB3ANALYTICS_ADDRESS = '0x93e661241b3f4ad92081ABf488835a02EB703594'
-const WEB3ANALYTICS_PAYMASTER_ADDRESS = '0x710733adb74679139Df88c216d4532189C1c6378'
+const WEB3ANALYTICS_ADDRESS = '0x76e5Dc4eF81F168DeF4287255238cfbEb2f63B17'
+const WEB3ANALYTICS_PAYMASTER_ADDRESS = '0x84eefb4baca6c589874F1948b741592695dbF78F'
 
 // Set up Ceramic
 const ceramic = new CeramicClient('https://ceramic-clay.3boxlabs.com')
