@@ -121,9 +121,9 @@ export default function web3Analytics(userConfig) {
 
   async function sendEvent(payload, authenticatedDID) {
     // Add data to Event payload
-    const now = Date.now()
-    payload.updated_at = now
-    payload.created_at = now
+    payload.meta.ts = payload.meta.ts.toString()
+    payload.updated_at = (Date.now()).toString()
+    payload.created_at = (new Date()).toISOString()
     payload.app_id = appId
     payload.did = authenticatedDID.id
 
