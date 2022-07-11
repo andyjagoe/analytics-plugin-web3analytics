@@ -121,18 +121,20 @@ export default function web3Analytics(userConfig) {
 
   async function sendEvent(payload, authenticatedDID) {
     // Add data to Event payload
-    payload.appId = appId
+    const now = Date.now()
+    payload.updated_at = now
+    payload.created_at = now
+    payload.app_id = appId
     payload.did = authenticatedDID.id
-    payload.updated_at = Date.now()
 
     // Flatten payload and add original as json string
     let flattened = payload
     try {
-      flattened = flatten(payload)
+      flattened = flatten(payload, {delimiter:'_'})
     } catch (err) {
       console.log(err)
     }
-    flattened._raw = JSON.stringify(payload)
+    flattened.raw_payload = JSON.stringify(payload)
 
     console.log(flattened);
 
