@@ -121,8 +121,9 @@ export default function web3Analytics(userConfig) {
 
   async function sendEvent(payload, authenticatedDID) {
     // Add data to Event payload
-    payload.meta.ts = payload.meta.ts.toString()
-    payload.updated_at = (Date.now()).toString()
+    const ts = payload.meta.ts
+    payload.meta.ts = ts.toString()
+    payload.updated_at = Date.now()
     payload.created_at = (new Date()).toISOString()
     payload.app_id = appId
     payload.did = authenticatedDID.id
@@ -152,7 +153,7 @@ export default function web3Analytics(userConfig) {
     // Add Event object to Events index
     const events = eventsList?.events ?? []
     await dataStore.set('events', {
-        events: [...events, { id: doc.id.toUrl(), updated_at: payload.meta.ts }],
+        events: [...events, { id: doc.id.toUrl(), updated_at: ts }],
     })
 
     // Report update to console
