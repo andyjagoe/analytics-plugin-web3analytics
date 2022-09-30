@@ -18,8 +18,8 @@ import flatten from 'flat'
 
 
 // Contract Addresses
-const WEB3ANALYTICS_ADDRESS = '0x76e5Dc4eF81F168DeF4287255238cfbEb2f63B17'
-const WEB3ANALYTICS_PAYMASTER_ADDRESS = '0x84eefb4baca6c589874F1948b741592695dbF78F'
+const WEB3ANALYTICS_ADDRESS = '0xb138c0E9b061d4dDe95E840F2757eF29fAa2e101'
+const WEB3ANALYTICS_PAYMASTER_ADDRESS = '0x9DE71fE3483F77B46185fE9aa35987569430bF8C'
 
 // Set up Ceramic
 const ceramic = new CeramicClient('https://ceramic-clay.3boxlabs.com')
@@ -74,6 +74,9 @@ export default function web3Analytics(userConfig) {
     // OpenGSN config
     const confStandard = await { 
       paymasterAddress: WEB3ANALYTICS_PAYMASTER_ADDRESS,
+      relayLookupWindowBlocks: 990,
+      relayRegistrationLookupBlocks: 990,
+      pastEventsQueryMaxPageSize: 990
     }
 
     const web3provider = new 
