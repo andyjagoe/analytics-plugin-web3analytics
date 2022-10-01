@@ -12,12 +12,9 @@ import { Wallet } from '@ethersproject/wallet'
 import { toString as u8aToString } from 'uint8arrays'
 import modelAliases from './model.json'
 import { RelayProvider } from "@opengsn/provider"
-//import { wrapContract } from "@opengsn/provider/dist/WrapContract"
 import { WrapBridge } from "@opengsn/provider/dist/WrapContract"
 import { Eip1193Bridge } from "@ethersproject/experimental"
-
 import Web3AnalyticsABI from "./Web3AnalyticsABI.json"
-//import Web3HttpProvider from 'web3-providers-http'
 import flatten from 'flat'
 
 
@@ -69,105 +66,22 @@ export default function web3Analytics(userConfig) {
     return contract.isAppRegistered(appId)
   }
 
+  async function checkUserRegistration(privateKey) {
+    const provider = new JsonRpcProvider(jsonRpcUrl)
+    const signer = new Wallet(privateKey, provider)
+    const contract = await new
+    Contract(
+      WEB3ANALYTICS_ADDRESS, 
+      Web3AnalyticsABI,
+      provider.getSigner(signer.address, signer.privateKey)
+    )
+    return contract.isUserRegistered(appId)
+  }
 
   async function registerUser(privateKey, did) {
     console.log(did)
 
     // OpenGSN config
-    /*
-    const gsnConfig = {
-      paymasterAddress: WEB3ANALYTICS_PAYMASTER_ADDRESS
-    }
-
-    const web3provider = new Web3HttpProvider(jsonRpcUrl)
-
-    const gsnProvider = RelayProvider.newProvider({provider: web3provider, config: gsnConfig})
-    await gsnProvider.init()
-
-    const signer = new Wallet(privateKey)
-    gsnProvider.addAccount(signer.privateKey)
-
-    const provider = new Web3Provider(gsnProvider)
-
-    const contract = await new Contract (
-      WEB3ANALYTICS_ADDRESS, 
-      Web3AnalyticsABI,
-      provider.getSigner(signer.address, signer.privateKey)
-    )
-
-    // Check if user is already registered
-    const isRegistered = await contract.isUserRegistered(appId);
-    if (isRegistered) {
-      console.log(`User is registered. Address: ${signer.address} did: ${did}`)
-      return;
-    }
-
-    console.log(`Registering user Address: ${signer.address} did: ${did}`)
-
-    // If user is not registered, process now
-    const transaction = await contract.addUser(
-      did, 
-      appId,
-      {gasLimit: 1e6}
-    )
-    console.log(transaction)
-    const receipt = await provider.waitForTransaction(transaction.hash)
-    console.log(receipt)
-
-    */
-
-
-    // try with ethers only
-    /*
-
-    const confStandard = { 
-      paymasterAddress: WEB3ANALYTICS_PAYMASTER_ADDRESS,
-    }
-  
-    const provider = new JsonRpcProvider(jsonRpcUrl)
-    const signer = new Wallet(privateKey, provider)
-    console.log(signer)
-
-    const eip1193Provider = new Eip1193Bridge(signer, provider)
-    console.log(eip1193Provider)
-
-    const p = new Web3Provider(eip1193Provider)
-    console.log(p)
-
-
-    const contract = await new Contract(
-      WEB3ANALYTICS_ADDRESS, 
-      Web3AnalyticsABI,
-      p.getSigner(signer.address, signer.privateKey)
-    )
-    console.log(contract)
-
-  
-    const gsnContract = await wrapContract(contract, confStandard)
-    console.log(gsnContract)
-
-
-    // Check if user is already registered
-    const isRegistered = await gsnContract.isUserRegistered(appId);
-    if (isRegistered) {
-      console.log(`User is registered. Address: ${signer.address} did: ${did}`)
-      return;
-    }
-
-    console.log(`Registering user Address: ${signer.address} did: ${did}`)
-
-    // If user is not registered, process now
-    const transaction = await gsnContract.addUser(
-      did, 
-      appId,
-      {gasLimit: 1e6}
-    )
-    console.log(transaction)
-    const receipt = await provider.waitForTransaction(transaction.hash)
-    console.log(receipt)
-    */
-
-    // New try w/o web3.js
     const signer = new Wallet(privateKey)
     const gsnProvider = RelayProvider.newProvider(
       {
@@ -185,16 +99,8 @@ export default function web3Analytics(userConfig) {
       provider.getSigner(signer.address, signer.privateKey)
     )
 
-    // Check if user is already registered
-    const isRegistered = await contract.isUserRegistered(appId);
-    if (isRegistered) {
-      console.log(`User is registered. Address: ${signer.address} did: ${did}`)
-      return;
-    }
-
     console.log(`Registering user Address: ${signer.address} did: ${did}`)
 
-    // If user is not registered, process now
     const transaction = await contract.addUser(
       did, 
       appId,
@@ -203,8 +109,6 @@ export default function web3Analytics(userConfig) {
     console.log(transaction)
     const receipt = await provider.waitForTransaction(transaction.hash)
     console.log(receipt)
-
-
   }
 
   function queue(fn) {
@@ -279,6 +183,7 @@ export default function web3Analytics(userConfig) {
       authenticatedDID = await authenticateCeramic(seed);
       localStorage.setItem('authenticatedDID', authenticatedDID.id);
 
+      // Check app registration
       const isAppRegistered = await checkAppRegistration();
       if (!isAppRegistered) {
         console.log(`${ appId } is not a registered app. Tracking not enabled.`);
@@ -286,15 +191,22 @@ export default function web3Analytics(userConfig) {
       }
       console.log(`App is Registered: ${appId}`)
 
-      // Check event count
-      const newEvents = await dataStore.get('events')
-      console.log(newEvents)
+      // Check user registration TODO: allow tracking before user is registered?
+      const isUserRegistered = await checkUserRegistration(privateKey)
+      if (!isUserRegistered) {
+        console.log(`User not registered. Attempting to register.`)
+        registerUser(privateKey, authenticatedDID.id);
+      } else {
+        console.log(`User is registered.`)
+      }
+  
+      // enable tracking
+      window.web3AnalyticsLoaded = true      
 
-      // attempt to register user on blockchain
-      registerUser(privateKey, authenticatedDID.id);
-      
-      window.web3AnalyticsLoaded = true;  
-      
+      // Report ceramic event count TODO: remove this when upgrade ceramic
+      const newEvents = await dataStore.get('events')
+      console.log(newEvents)      
+
     },
     page: async ({ payload }) => {
       queue(sendEvent.bind(null, payload, authenticatedDID));
