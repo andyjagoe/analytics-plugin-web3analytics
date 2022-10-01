@@ -12,14 +12,18 @@ import { Wallet } from '@ethersproject/wallet'
 import { toString as u8aToString } from 'uint8arrays'
 import modelAliases from './model.json'
 import { RelayProvider } from "@opengsn/provider"
+//import { wrapContract } from "@opengsn/provider/dist/WrapContract"
+import { WrapBridge } from "@opengsn/provider/dist/WrapContract"
+import { Eip1193Bridge } from "@ethersproject/experimental"
+
 import Web3AnalyticsABI from "./Web3AnalyticsABI.json"
-import Web3HttpProvider from 'web3-providers-http'
+//import Web3HttpProvider from 'web3-providers-http'
 import flatten from 'flat'
 
 
 // Contract Addresses
-const WEB3ANALYTICS_ADDRESS = '0xb138c0E9b061d4dDe95E840F2757eF29fAa2e101'
-const WEB3ANALYTICS_PAYMASTER_ADDRESS = '0x9DE71fE3483F77B46185fE9aa35987569430bF8C'
+const WEB3ANALYTICS_ADDRESS = '0x19149a1b01D908388809fAF8956955F41C32C02F'
+const WEB3ANALYTICS_PAYMASTER_ADDRESS = '0x7b18C48FC799196325D74571034066C1491ff8Af'
 
 // Set up Ceramic
 const ceramic = new CeramicClient('https://ceramic-clay.3boxlabs.com')
@@ -72,30 +76,26 @@ export default function web3Analytics(userConfig) {
     console.log(did)
 
     // OpenGSN config
-    const confStandard = await { 
-      paymasterAddress: WEB3ANALYTICS_PAYMASTER_ADDRESS,
-      relayLookupWindowBlocks: 990,
-      relayRegistrationLookupBlocks: 990,
-      pastEventsQueryMaxPageSize: 990
+    /*
+    const gsnConfig = {
+      paymasterAddress: WEB3ANALYTICS_PAYMASTER_ADDRESS
     }
 
-    const web3provider = new 
-      Web3HttpProvider(jsonRpcUrl)
+    const web3provider = new Web3HttpProvider(jsonRpcUrl)
 
-    let gsnProvider =
-    await RelayProvider.newProvider({
-      provider: web3provider,
-      config: confStandard }).init()
+    const gsnProvider = RelayProvider.newProvider({provider: web3provider, config: gsnConfig})
+    await gsnProvider.init()
 
     const signer = new Wallet(privateKey)
     gsnProvider.addAccount(signer.privateKey)
 
     const provider = new Web3Provider(gsnProvider)
 
-    const contract = await new
-    Contract(WEB3ANALYTICS_ADDRESS, Web3AnalyticsABI,
-      provider.getSigner(signer.address, signer.privateKey))
-
+    const contract = await new Contract (
+      WEB3ANALYTICS_ADDRESS, 
+      Web3AnalyticsABI,
+      provider.getSigner(signer.address, signer.privateKey)
+    )
 
     // Check if user is already registered
     const isRegistered = await contract.isUserRegistered(appId);
@@ -115,6 +115,104 @@ export default function web3Analytics(userConfig) {
     console.log(transaction)
     const receipt = await provider.waitForTransaction(transaction.hash)
     console.log(receipt)
+
+    */
+
+
+    // try with ethers only
+    /*
+
+    const confStandard = { 
+      paymasterAddress: WEB3ANALYTICS_PAYMASTER_ADDRESS,
+    }
+  
+    const provider = new JsonRpcProvider(jsonRpcUrl)
+    const signer = new Wallet(privateKey, provider)
+    console.log(signer)
+
+    const eip1193Provider = new Eip1193Bridge(signer, provider)
+    console.log(eip1193Provider)
+
+    const p = new Web3Provider(eip1193Provider)
+    console.log(p)
+
+
+    const contract = await new Contract(
+      WEB3ANALYTICS_ADDRESS, 
+      Web3AnalyticsABI,
+      p.getSigner(signer.address, signer.privateKey)
+    )
+    console.log(contract)
+
+  
+    const gsnContract = await wrapContract(contract, confStandard)
+    console.log(gsnContract)
+
+
+    // Check if user is already registered
+    const isRegistered = await gsnContract.isUserRegistered(appId);
+    if (isRegistered) {
+      console.log(`User is registered. Address: ${signer.address} did: ${did}`)
+      return;
+    }
+
+    console.log(`Registering user Address: ${signer.address} did: ${did}`)
+
+    // If user is not registered, process now
+    const transaction = await gsnContract.addUser(
+      did, 
+      appId,
+      {gasLimit: 1e6}
+    )
+    console.log(transaction)
+    const receipt = await provider.waitForTransaction(transaction.hash)
+    console.log(receipt)
+    */
+
+    // New try w/o web3.js
+    const gsnConfig = {
+      paymasterAddress: WEB3ANALYTICS_PAYMASTER_ADDRESS
+    }
+
+    //const web3provider = new Web3HttpProvider(jsonRpcUrl)
+    const signer = new Wallet(privateKey)
+
+    const p = new JsonRpcProvider(jsonRpcUrl)
+    const bridgeProvider = new WrapBridge(new Eip1193Bridge(signer, p))
+
+    const gsnProvider = RelayProvider.newProvider({provider: bridgeProvider, config: gsnConfig})
+    await gsnProvider.init()
+
+    gsnProvider.addAccount(signer.privateKey)
+
+    const provider = new Web3Provider(gsnProvider)
+
+    const contract = await new Contract (
+      WEB3ANALYTICS_ADDRESS, 
+      Web3AnalyticsABI,
+      provider.getSigner(signer.address, signer.privateKey)
+    )
+
+    // Check if user is already registered
+    const isRegistered = await contract.isUserRegistered(appId);
+    if (isRegistered) {
+      console.log(`User is registered. Address: ${signer.address} did: ${did}`)
+      return;
+    }
+
+    console.log(`Registering user Address: ${signer.address} did: ${did}`)
+
+    // If user is not registered, process now
+    const transaction = await contract.addUser(
+      did, 
+      appId,
+      {gasLimit: 1e6}
+    )
+    console.log(transaction)
+    const receipt = await provider.waitForTransaction(transaction.hash)
+    console.log(receipt)
+
+
   }
 
   function queue(fn) {
