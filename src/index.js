@@ -44,7 +44,6 @@ export default function web3Analytics(userConfig) {
   // `seed` must be a 32-byte long Uint8Array
   async function authenticateCeramic(seed) {
       const provider = new Secp256k1Provider(seed)
-      console.log(provider)
       const did = new DID({ provider, resolver: KeyResolver.getResolver() })
       console.log(did)
 
@@ -72,7 +71,6 @@ export default function web3Analytics(userConfig) {
 
 
   async function registerUser(privateKey, did) {
-    console.log(privateKey)
     console.log(did)
 
     // OpenGSN config
@@ -170,21 +168,15 @@ export default function web3Analytics(userConfig) {
     */
 
     // New try w/o web3.js
-    const gsnConfig = {
-      paymasterAddress: WEB3ANALYTICS_PAYMASTER_ADDRESS
-    }
-
-    //const web3provider = new Web3HttpProvider(jsonRpcUrl)
     const signer = new Wallet(privateKey)
-
-    const p = new JsonRpcProvider(jsonRpcUrl)
-    const bridgeProvider = new WrapBridge(new Eip1193Bridge(signer, p))
-
-    const gsnProvider = RelayProvider.newProvider({provider: bridgeProvider, config: gsnConfig})
+    const gsnProvider = RelayProvider.newProvider(
+      {
+        provider: new WrapBridge(new Eip1193Bridge(signer, new JsonRpcProvider(jsonRpcUrl))), 
+        config: { paymasterAddress: WEB3ANALYTICS_PAYMASTER_ADDRESS }
+      })
     await gsnProvider.init()
 
     gsnProvider.addAccount(signer.privateKey)
-
     const provider = new Web3Provider(gsnProvider)
 
     const contract = await new Contract (
