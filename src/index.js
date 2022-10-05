@@ -5,22 +5,25 @@ import { Secp256k1Provider } from 'key-did-provider-secp256k1'
 import KeyResolver from 'key-did-resolver'
 import { DataModel } from '@glazed/datamodel'
 import { DIDDataStore } from '@glazed/did-datastore'
-import { JsonRpcProvider, Web3Provider } from '@ethersproject/providers'
-import { Contract } from '@ethersproject/contracts'
-import { isAddress } from '@ethersproject/address'
-import { Wallet } from '@ethersproject/wallet'
-import { toString as u8aToString } from 'uint8arrays'
 import modelAliases from './model.json'
+import { JsonRpcProvider, Contract, isAddress } from 'essential-eth'  // 2x as fast as ethers
+import { JsonRpcProvider as EthersJsonRpcProvider, Web3Provider } from '@ethersproject/providers'
+import { Contract as EthersContract } from '@ethersproject/contracts'
+import { Wallet } from '@ethersproject/wallet'
 import { RelayProvider } from "@opengsn/provider"
 import { WrapBridge } from "@opengsn/provider/dist/WrapContract"
 import { Eip1193Bridge } from "@ethersproject/experimental"
+import { toString as u8aToString } from 'uint8arrays'
 import Web3AnalyticsABI from "./Web3AnalyticsABI.json"
 import flatten from 'flat'
+import log from 'loglevel'
+
+log.setDefaultLevel("error")
 
 
 // Contract Addresses
-const WEB3ANALYTICS_ADDRESS = '0x19149a1b01D908388809fAF8956955F41C32C02F'
-const WEB3ANALYTICS_PAYMASTER_ADDRESS = '0x7b18C48FC799196325D74571034066C1491ff8Af'
+const WEB3ANALYTICS_ADDRESS = '0x25874Dd2dE546eF0D9c0D247Ea6CA0AF1F362941'
+const WEB3ANALYTICS_PAYMASTER_ADDRESS = '0x487316eff97A1F71dd1779FEb5D1265a5C0E11aD'
 
 // Set up Ceramic
 const ceramic = new CeramicClient('https://ceramic-clay.3boxlabs.com')
@@ -32,21 +35,30 @@ const dataStore = new DIDDataStore({ ceramic, loader, model })
 
 
 export default function web3Analytics(userConfig) {
+  console.time("Web3AnalyticsLoaded")
   const appId = userConfig.appId
   const jsonRpcUrl = userConfig.jsonRpcUrl
+  const logLevel = userConfig.logLevel
+  setLoglevel()
+
+
   let authenticatedDID
   let q_ = Promise.resolve();
 
+
+  function setLoglevel() {
+    if (logLevel && logLevel.toString().toUpperCase() in log.levels) log.setLevel(logLevel, false)
+  }
 
   // `seed` must be a 32-byte long Uint8Array
   async function authenticateCeramic(seed) {
       const provider = new Secp256k1Provider(seed)
       const did = new DID({ provider, resolver: KeyResolver.getResolver() })
-      console.log(did)
+      log.debug(did)
 
       // Authenticate the DID with the provider
       await did.authenticate()
-      console.log(did);
+      log.debug(did);
 
       // The Ceramic client can create and update streams using the authenticated DID
       ceramic.did = did
@@ -56,7 +68,7 @@ export default function web3Analytics(userConfig) {
 
   async function checkAppRegistration() {
     if (!isAddress(appId)) return false;
-    const provider = new JsonRpcProvider(jsonRpcUrl);
+    const provider = new JsonRpcProvider(jsonRpcUrl)
     const contract = await new
     Contract(
       WEB3ANALYTICS_ADDRESS, 
@@ -66,49 +78,55 @@ export default function web3Analytics(userConfig) {
     return contract.isAppRegistered(appId)
   }
 
-  async function checkUserRegistration(privateKey) {
+  async function checkUserRegistration(signer) {
     const provider = new JsonRpcProvider(jsonRpcUrl)
-    const signer = new Wallet(privateKey, provider)
     const contract = await new
     Contract(
       WEB3ANALYTICS_ADDRESS, 
       Web3AnalyticsABI,
-      provider.getSigner(signer.address, signer.privateKey)
+      provider
     )
-    return contract.isUserRegistered(appId)
+    return contract.isUserRegistered(appId, signer.address)
   }
 
   async function registerUser(privateKey, did) {
-    console.log(did)
+    log.debug(did)
 
     // OpenGSN config
     const signer = new Wallet(privateKey)
     const gsnProvider = RelayProvider.newProvider(
       {
-        provider: new WrapBridge(new Eip1193Bridge(signer, new JsonRpcProvider(jsonRpcUrl))), 
-        config: { paymasterAddress: WEB3ANALYTICS_PAYMASTER_ADDRESS }
+        provider: new WrapBridge(new Eip1193Bridge(signer, new EthersJsonRpcProvider(jsonRpcUrl))), 
+        config: { 
+          paymasterAddress: WEB3ANALYTICS_PAYMASTER_ADDRESS,
+          loggerConfiguration: {
+            logLevel: "error"
+          }   
+        }
       })
     await gsnProvider.init()
 
     gsnProvider.addAccount(signer.privateKey)
     const provider = new Web3Provider(gsnProvider)
 
-    const contract = await new Contract (
+    const contract = await new EthersContract (
       WEB3ANALYTICS_ADDRESS, 
       Web3AnalyticsABI,
       provider.getSigner(signer.address, signer.privateKey)
     )
 
-    console.log(`Registering user Address: ${signer.address} did: ${did}`)
-
+    log.info(`Registering user Address: ${signer.address} did: ${did}`)
+    
     const transaction = await contract.addUser(
       did, 
       appId,
       {gasLimit: 1e6}
     )
-    console.log(transaction)
+
+    setLoglevel() // Needed b/c winston (opengsn) messes w/ console.log & loglevel loses it
+    log.debug(transaction)
     const receipt = await provider.waitForTransaction(transaction.hash)
-    console.log(receipt)
+    log.debug(receipt)
   }
 
   function queue(fn) {
@@ -130,11 +148,11 @@ export default function web3Analytics(userConfig) {
     try {
       flattened = flatten(payload, {delimiter:'_'})
     } catch (err) {
-      console.log(err)
+      log.error(err)
     }
     flattened.raw_payload = JSON.stringify(payload)
 
-    console.log(flattened);
+    log.debug(flattened);
 
     // Create Event in Ceramic
     const [doc, eventsList] = await Promise.all([
@@ -155,7 +173,7 @@ export default function web3Analytics(userConfig) {
 
     // Report update to console
     const docID = doc.id.toString()
-    console.log(`New document id: ${docID}`)
+    log.debug(`New document id: ${docID}`)
 
   }
   
@@ -165,6 +183,7 @@ export default function web3Analytics(userConfig) {
     name: 'web3analytics',
     config: {},
     initialize: async ({ config }) => {
+      console.time("Initializing")
       let seed;
 
       const ceramicSeed = JSON.parse(localStorage.getItem('ceramicSeed'));
@@ -180,33 +199,45 @@ export default function web3Analytics(userConfig) {
       const privateKey = "0x"+ u8aToString(seed, 'base16')
 
       // Authenticate Ceramic
-      authenticatedDID = await authenticateCeramic(seed);
+      console.time("AuthenticateCeramic")
+      authenticatedDID = await authenticateCeramic(seed)
+      console.timeEnd("AuthenticateCeramic")
       localStorage.setItem('authenticatedDID', authenticatedDID.id);
 
       // Check app registration
+      console.time("CheckAppRegistration")
       const isAppRegistered = await checkAppRegistration();
+      console.timeEnd("CheckAppRegistration")
       if (!isAppRegistered) {
-        console.log(`${ appId } is not a registered app. Tracking not enabled.`);
+        log.info(`${ appId } is not a registered app. Tracking not enabled.`)
         return;
       }
-      console.log(`App is Registered: ${appId}`)
+      log.info(`App is Registered: ${appId}`)
 
-      // Check user registration TODO: allow tracking before user is registered?
-      const isUserRegistered = await checkUserRegistration(privateKey)
+      // Check user registration 
+      // TODO: allow tracking before user is registered? put this in a separate worker thread?
+      console.time("CheckUserRegistration")
+      const signer = new Wallet(privateKey)
+      const isUserRegistered = await checkUserRegistration(signer)
+      console.timeEnd("CheckUserRegistration")
+
       if (!isUserRegistered) {
-        console.log(`User not registered. Attempting to register.`)
-        registerUser(privateKey, authenticatedDID.id);
+        log.info(`User not registered. Attempting to register.`)
+        registerUser(privateKey, authenticatedDID.id)
       } else {
-        console.log(`User is registered.`)
+        log.info(`User is registered.`)
       }
   
-      // enable tracking
-      window.web3AnalyticsLoaded = true      
+      // enable tracking      
+      window.web3AnalyticsLoaded = true 
+      console.timeEnd("Web3AnalyticsLoaded")
+      console.log("window.web3AnalyticsLoaded: " , window.web3AnalyticsLoaded)
 
       // Report ceramic event count TODO: remove this when upgrade ceramic
-      const newEvents = await dataStore.get('events')
-      console.log(newEvents)      
-
+      //const newEvents = await dataStore.get('events')
+      //log.debug(newEvents)
+      
+      console.timeEnd("Initializing")
     },
     page: async ({ payload }) => {
       queue(sendEvent.bind(null, payload, authenticatedDID));

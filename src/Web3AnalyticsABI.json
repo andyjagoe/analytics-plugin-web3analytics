@@ -61,6 +61,42 @@
     "type": "function"
   },
   {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "app",
+        "type": "address"
+      }
+    ],
+    "name": "getAppData",
+    "outputs": [
+      {
+        "components": [
+          {
+            "internalType": "address",
+            "name": "appAddress",
+            "type": "address"
+          },
+          {
+            "internalType": "string",
+            "name": "appName",
+            "type": "string"
+          },
+          {
+            "internalType": "string",
+            "name": "appUrl",
+            "type": "string"
+          }
+        ],
+        "internalType": "struct Web3Analytics.App",
+        "name": "",
+        "type": "tuple"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
     "inputs": [],
     "name": "getApps",
     "outputs": [
@@ -68,6 +104,19 @@
         "internalType": "address[]",
         "name": "",
         "type": "address[]"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "getTrustedForwarder",
+    "outputs": [
+      {
+        "internalType": "address",
+        "name": "forwarder",
+        "type": "address"
       }
     ],
     "stateMutability": "view",
@@ -186,6 +235,11 @@
         "internalType": "address",
         "name": "app",
         "type": "address"
+      },
+      {
+        "internalType": "address",
+        "name": "user",
+        "type": "address"
       }
     ],
     "name": "isUserRegistered",
@@ -213,7 +267,18 @@
     "type": "function"
   },
   {
-    "inputs": [],
+    "inputs": [
+      {
+        "internalType": "string",
+        "name": "name",
+        "type": "string"
+      },
+      {
+        "internalType": "string",
+        "name": "url",
+        "type": "string"
+      }
+    ],
     "name": "registerApp",
     "outputs": [],
     "stateMutability": "nonpayable",
@@ -240,29 +305,21 @@
     "type": "function"
   },
   {
-    "inputs": [],
-    "name": "trustedForwarder",
-    "outputs": [
-      {
-        "internalType": "address",
-        "name": "",
-        "type": "address"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [],
-    "name": "versionRecipient",
-    "outputs": [
+    "inputs": [
       {
         "internalType": "string",
-        "name": "",
+        "name": "name",
+        "type": "string"
+      },
+      {
+        "internalType": "string",
+        "name": "url",
         "type": "string"
       }
     ],
-    "stateMutability": "view",
+    "name": "updateAppData",
+    "outputs": [],
+    "stateMutability": "nonpayable",
     "type": "function"
   }
 ]
