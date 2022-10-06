@@ -35,7 +35,6 @@ const dataStore = new DIDDataStore({ ceramic, loader, model })
 
 
 export default function web3Analytics(userConfig) {
-  console.time("Web3AnalyticsLoaded")
   const appId = userConfig.appId
   const jsonRpcUrl = userConfig.jsonRpcUrl
   const logLevel = userConfig.logLevel
@@ -183,7 +182,6 @@ export default function web3Analytics(userConfig) {
     name: 'web3analytics',
     config: {},
     initialize: async ({ config }) => {
-      console.time("Initializing")
       let seed;
 
       const ceramicSeed = JSON.parse(localStorage.getItem('ceramicSeed'));
@@ -199,15 +197,11 @@ export default function web3Analytics(userConfig) {
       const privateKey = "0x"+ u8aToString(seed, 'base16')
 
       // Authenticate Ceramic
-      console.time("AuthenticateCeramic")
       authenticatedDID = await authenticateCeramic(seed)
-      console.timeEnd("AuthenticateCeramic")
       localStorage.setItem('authenticatedDID', authenticatedDID.id);
 
       // Check app registration
-      console.time("CheckAppRegistration")
       const isAppRegistered = await checkAppRegistration();
-      console.timeEnd("CheckAppRegistration")
       if (!isAppRegistered) {
         log.info(`${ appId } is not a registered app. Tracking not enabled.`)
         return;
@@ -216,10 +210,8 @@ export default function web3Analytics(userConfig) {
 
       // Check user registration 
       // TODO: allow tracking before user is registered? put this in a separate worker thread?
-      console.time("CheckUserRegistration")
       const signer = new Wallet(privateKey)
       const isUserRegistered = await checkUserRegistration(signer)
-      console.timeEnd("CheckUserRegistration")
 
       if (!isUserRegistered) {
         log.info(`User not registered. Attempting to register.`)
@@ -230,14 +222,11 @@ export default function web3Analytics(userConfig) {
   
       // enable tracking      
       window.web3AnalyticsLoaded = true 
-      console.timeEnd("Web3AnalyticsLoaded")
-      console.log("window.web3AnalyticsLoaded: " , window.web3AnalyticsLoaded)
 
       // Report ceramic event count TODO: remove this when upgrade ceramic
       //const newEvents = await dataStore.get('events')
       //log.debug(newEvents)
       
-      console.timeEnd("Initializing")
     },
     page: async ({ payload }) => {
       queue(sendEvent.bind(null, payload, authenticatedDID));
