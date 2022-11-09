@@ -21,18 +21,32 @@ import log from 'loglevel'
 log.setDefaultLevel("error")
 
 
-// Contract Addresses
-const WEB3ANALYTICS_ADDRESS = '0x25874Dd2dE546eF0D9c0D247Ea6CA0AF1F362941'
-const WEB3ANALYTICS_PAYMASTER_ADDRESS = '0x487316eff97A1F71dd1779FEb5D1265a5C0E11aD'
+const WEB3ANALYTICS_ADDRESS = '0xd00CCD251869086eCD8B54f328Df1d623369b8F6'
+const WEB3ANALYTICS_PAYMASTER_ADDRESS = '0x1A387Db642a76bEE516f1e16F542ed64ee81772c'
+const CERAMIC_ADDRESS = 'https://ceramic-clay.3boxlabs.com'
+
 
 // Set up Ceramic
-const ceramic = new CeramicClient('https://ceramic-clay.3boxlabs.com')
+const ceramic = new CeramicClient(CERAMIC_ADDRESS)
 const cache = new Map()
 const loader = new TileLoader({ ceramic, cache })
 const model = new DataModel({ loader, model: modelAliases })
 const dataStore = new DIDDataStore({ ceramic, loader, model })
 
 
+/**
+ * web3Analytics v3 plugin
+ * @param {object}  userConfig - Plugin settings
+ * @param {string}  pluginConfig.appId - The app ID (an ETH address) you received from web3 analytics (required)
+ * @param {string}  pluginConfig.jsonRpcUrl - Your JSON RPC url (required)
+ * @param {string}  pluginConfig.logLevel - Log level may be debug, info, warn, error (default). Param is optional
+ * @example
+ *
+ * web3Analytics({
+ *   appId: 'YOUR_APP_ID',
+ *   jsonRpcUrl: 'YOUR_JSONRPC_URL'
+ * })
+ */
 
 export default function web3Analytics(userConfig) {
   const appId = userConfig.appId
@@ -99,7 +113,7 @@ export default function web3Analytics(userConfig) {
         config: { 
           paymasterAddress: WEB3ANALYTICS_PAYMASTER_ADDRESS,
           loggerConfiguration: {
-            logLevel: "error"
+            logLevel: "debug"
           }   
         }
       })
@@ -118,8 +132,7 @@ export default function web3Analytics(userConfig) {
     
     const transaction = await contract.addUser(
       did, 
-      appId,
-      {gasLimit: 1e6}
+      appId
     )
 
     setLoglevel() // Needed b/c winston (opengsn) messes w/ console.log & loglevel loses it
@@ -209,7 +222,7 @@ export default function web3Analytics(userConfig) {
       log.info(`App is Registered: ${appId}`)
 
       // Check user registration 
-      // TODO: allow tracking before user is registered? put this in a separate worker thread?
+      // TODO: allow tracking while user is being registered? put this in a web worker?
       const signer = new Wallet(privateKey)
       const isUserRegistered = await checkUserRegistration(signer)
 
