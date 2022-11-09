@@ -5,48 +5,73 @@ import { Secp256k1Provider } from 'key-did-provider-secp256k1'
 import KeyResolver from 'key-did-resolver'
 import { DataModel } from '@glazed/datamodel'
 import { DIDDataStore } from '@glazed/did-datastore'
-import { JsonRpcProvider, Web3Provider } from '@ethersproject/providers'
-import { Contract } from '@ethersproject/contracts'
-import { isAddress } from '@ethersproject/address'
-import { Wallet } from '@ethersproject/wallet'
-import { toString as u8aToString } from 'uint8arrays'
 import modelAliases from './model.json'
+import { JsonRpcProvider, Contract, isAddress } from 'essential-eth'  // 2x as fast as ethers
+import { JsonRpcProvider as EthersJsonRpcProvider, Web3Provider } from '@ethersproject/providers'
+import { Contract as EthersContract } from '@ethersproject/contracts'
+import { Wallet } from '@ethersproject/wallet'
 import { RelayProvider } from "@opengsn/provider"
+import { WrapBridge } from "@opengsn/provider/dist/WrapContract"
+import { Eip1193Bridge } from "@ethersproject/experimental"
+import { toString as u8aToString } from 'uint8arrays'
 import Web3AnalyticsABI from "./Web3AnalyticsABI.json"
-import Web3HttpProvider from 'web3-providers-http'
 import flatten from 'flat'
+import log from 'loglevel'
+
+log.setDefaultLevel("error")
 
 
-// Contract Addresses
-const WEB3ANALYTICS_ADDRESS = '0xb138c0E9b061d4dDe95E840F2757eF29fAa2e101'
-const WEB3ANALYTICS_PAYMASTER_ADDRESS = '0x9DE71fE3483F77B46185fE9aa35987569430bF8C'
+const WEB3ANALYTICS_ADDRESS = '0xd00CCD251869086eCD8B54f328Df1d623369b8F6'
+const WEB3ANALYTICS_PAYMASTER_ADDRESS = '0x1A387Db642a76bEE516f1e16F542ed64ee81772c'
+const CERAMIC_ADDRESS = 'https://ceramic-clay.3boxlabs.com'
+
 
 // Set up Ceramic
-const ceramic = new CeramicClient('https://ceramic-clay.3boxlabs.com')
+const ceramic = new CeramicClient(CERAMIC_ADDRESS)
 const cache = new Map()
 const loader = new TileLoader({ ceramic, cache })
 const model = new DataModel({ loader, model: modelAliases })
 const dataStore = new DIDDataStore({ ceramic, loader, model })
 
 
+/**
+ * web3Analytics v3 plugin
+ * @param {object}  userConfig - Plugin settings
+ * @param {string}  pluginConfig.appId - The app ID (an ETH address) you received from web3 analytics (required)
+ * @param {string}  pluginConfig.jsonRpcUrl - Your JSON RPC url (required)
+ * @param {string}  pluginConfig.logLevel - Log level may be debug, info, warn, error (default). Param is optional
+ * @example
+ *
+ * web3Analytics({
+ *   appId: 'YOUR_APP_ID',
+ *   jsonRpcUrl: 'YOUR_JSONRPC_URL'
+ * })
+ */
 
 export default function web3Analytics(userConfig) {
   const appId = userConfig.appId
   const jsonRpcUrl = userConfig.jsonRpcUrl
+  const logLevel = userConfig.logLevel
+  setLoglevel()
+
+
   let authenticatedDID
   let q_ = Promise.resolve();
 
 
+  function setLoglevel() {
+    if (logLevel && logLevel.toString().toUpperCase() in log.levels) log.setLevel(logLevel, false)
+  }
+
   // `seed` must be a 32-byte long Uint8Array
   async function authenticateCeramic(seed) {
       const provider = new Secp256k1Provider(seed)
-      console.log(provider)
       const did = new DID({ provider, resolver: KeyResolver.getResolver() })
-      console.log(did)
+      log.debug(did)
 
       // Authenticate the DID with the provider
       await did.authenticate()
-      console.log(did);
+      log.debug(did);
 
       // The Ceramic client can create and update streams using the authenticated DID
       ceramic.did = did
@@ -56,7 +81,7 @@ export default function web3Analytics(userConfig) {
 
   async function checkAppRegistration() {
     if (!isAddress(appId)) return false;
-    const provider = new JsonRpcProvider(jsonRpcUrl);
+    const provider = new JsonRpcProvider(jsonRpcUrl)
     const contract = await new
     Contract(
       WEB3ANALYTICS_ADDRESS, 
@@ -66,55 +91,54 @@ export default function web3Analytics(userConfig) {
     return contract.isAppRegistered(appId)
   }
 
+  async function checkUserRegistration(signer) {
+    const provider = new JsonRpcProvider(jsonRpcUrl)
+    const contract = await new
+    Contract(
+      WEB3ANALYTICS_ADDRESS, 
+      Web3AnalyticsABI,
+      provider
+    )
+    return contract.isUserRegistered(appId, signer.address)
+  }
 
   async function registerUser(privateKey, did) {
-    console.log(privateKey)
-    console.log(did)
+    log.debug(did)
 
     // OpenGSN config
-    const confStandard = await { 
-      paymasterAddress: WEB3ANALYTICS_PAYMASTER_ADDRESS,
-      relayLookupWindowBlocks: 990,
-      relayRegistrationLookupBlocks: 990,
-      pastEventsQueryMaxPageSize: 990
-    }
-
-    const web3provider = new 
-      Web3HttpProvider(jsonRpcUrl)
-
-    let gsnProvider =
-    await RelayProvider.newProvider({
-      provider: web3provider,
-      config: confStandard }).init()
-
     const signer = new Wallet(privateKey)
-    gsnProvider.addAccount(signer.privateKey)
+    const gsnProvider = RelayProvider.newProvider(
+      {
+        provider: new WrapBridge(new Eip1193Bridge(signer, new EthersJsonRpcProvider(jsonRpcUrl))), 
+        config: { 
+          paymasterAddress: WEB3ANALYTICS_PAYMASTER_ADDRESS,
+          loggerConfiguration: {
+            logLevel: "debug"
+          }   
+        }
+      })
+    await gsnProvider.init()
 
+    gsnProvider.addAccount(signer.privateKey)
     const provider = new Web3Provider(gsnProvider)
 
-    const contract = await new
-    Contract(WEB3ANALYTICS_ADDRESS, Web3AnalyticsABI,
-      provider.getSigner(signer.address, signer.privateKey))
+    const contract = await new EthersContract (
+      WEB3ANALYTICS_ADDRESS, 
+      Web3AnalyticsABI,
+      provider.getSigner(signer.address, signer.privateKey)
+    )
 
-
-    // Check if user is already registered
-    const isRegistered = await contract.isUserRegistered(appId);
-    if (isRegistered) {
-      console.log(`User is registered. Address: ${signer.address} did: ${did}`)
-      return;
-    }
-
-    console.log(`Registering user Address: ${signer.address} did: ${did}`)
-
-    // If user is not registered, process now
+    log.info(`Registering user Address: ${signer.address} did: ${did}`)
+    
     const transaction = await contract.addUser(
       did, 
-      appId,
-      {gasLimit: 1e6}
+      appId
     )
-    console.log(transaction)
+
+    setLoglevel() // Needed b/c winston (opengsn) messes w/ console.log & loglevel loses it
+    log.debug(transaction)
     const receipt = await provider.waitForTransaction(transaction.hash)
-    console.log(receipt)
+    log.debug(receipt)
   }
 
   function queue(fn) {
@@ -136,11 +160,11 @@ export default function web3Analytics(userConfig) {
     try {
       flattened = flatten(payload, {delimiter:'_'})
     } catch (err) {
-      console.log(err)
+      log.error(err)
     }
     flattened.raw_payload = JSON.stringify(payload)
 
-    console.log(flattened);
+    log.debug(flattened);
 
     // Create Event in Ceramic
     const [doc, eventsList] = await Promise.all([
@@ -161,7 +185,7 @@ export default function web3Analytics(userConfig) {
 
     // Report update to console
     const docID = doc.id.toString()
-    console.log(`New document id: ${docID}`)
+    log.debug(`New document id: ${docID}`)
 
   }
   
@@ -186,24 +210,35 @@ export default function web3Analytics(userConfig) {
       const privateKey = "0x"+ u8aToString(seed, 'base16')
 
       // Authenticate Ceramic
-      authenticatedDID = await authenticateCeramic(seed);
+      authenticatedDID = await authenticateCeramic(seed)
       localStorage.setItem('authenticatedDID', authenticatedDID.id);
 
+      // Check app registration
       const isAppRegistered = await checkAppRegistration();
       if (!isAppRegistered) {
-        console.log(`${ appId } is not a registered app. Tracking not enabled.`);
+        log.info(`${ appId } is not a registered app. Tracking not enabled.`)
         return;
       }
-      console.log(`App is Registered: ${appId}`)
+      log.info(`App is Registered: ${appId}`)
 
-      // Check event count
-      const newEvents = await dataStore.get('events')
-      console.log(newEvents)
+      // Check user registration 
+      // TODO: allow tracking while user is being registered? put this in a web worker?
+      const signer = new Wallet(privateKey)
+      const isUserRegistered = await checkUserRegistration(signer)
 
-      // attempt to register user on blockchain
-      registerUser(privateKey, authenticatedDID.id);
-      
-      window.web3AnalyticsLoaded = true;  
+      if (!isUserRegistered) {
+        log.info(`User not registered. Attempting to register.`)
+        registerUser(privateKey, authenticatedDID.id)
+      } else {
+        log.info(`User is registered.`)
+      }
+  
+      // enable tracking      
+      window.web3AnalyticsLoaded = true 
+
+      // Report ceramic event count TODO: remove this when upgrade ceramic
+      //const newEvents = await dataStore.get('events')
+      //log.debug(newEvents)
       
     },
     page: async ({ payload }) => {
