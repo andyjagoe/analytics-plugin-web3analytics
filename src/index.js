@@ -1,11 +1,8 @@
-import { CeramicClient } from '@ceramicnetwork/http-client'
-import { TileLoader } from '@glazed/tile-loader'
+import { ComposeClient } from '@composedb/client'
+import { definition } from './definition.js'
 import { DID } from 'dids';
 import { Secp256k1Provider } from 'key-did-provider-secp256k1'
 import KeyResolver from 'key-did-resolver'
-import { DataModel } from '@glazed/datamodel'
-import { DIDDataStore } from '@glazed/did-datastore'
-import modelAliases from './model.json'
 import { JsonRpcProvider, Contract, isAddress } from 'essential-eth'  // 2x as fast as ethers
 import { JsonRpcProvider as EthersJsonRpcProvider, Web3Provider } from '@ethersproject/providers'
 import { Contract as EthersContract } from '@ethersproject/contracts'
@@ -23,15 +20,12 @@ log.setDefaultLevel("error")
 
 const WEB3ANALYTICS_ADDRESS = '0xd00CCD251869086eCD8B54f328Df1d623369b8F6'
 const WEB3ANALYTICS_PAYMASTER_ADDRESS = '0x1A387Db642a76bEE516f1e16F542ed64ee81772c'
-const CERAMIC_ADDRESS = 'https://ceramic-clay.3boxlabs.com'
+//const CERAMIC_ADDRESS = 'https://ceramic-clay.3boxlabs.com'
+const CERAMIC_ADDRESS = 'http://localhost:7007'
 
 
-// Set up Ceramic
-const ceramic = new CeramicClient(CERAMIC_ADDRESS)
-const cache = new Map()
-const loader = new TileLoader({ ceramic, cache })
-const model = new DataModel({ loader, model: modelAliases })
-const dataStore = new DIDDataStore({ ceramic, loader, model })
+// Set up Ceramic ComposeDB
+const compose = new ComposeClient({ ceramic: CERAMIC_ADDRESS, definition })
 
 
 /**
@@ -73,8 +67,8 @@ export default function web3Analytics(userConfig) {
       await did.authenticate()
       log.debug(did);
 
-      // The Ceramic client can create and update streams using the authenticated DID
-      ceramic.did = did
+      // The ComposeDB client can create and update streams using the authenticated DID
+      compose.setDID(did)
 
       return did;
   }
@@ -147,14 +141,6 @@ export default function web3Analytics(userConfig) {
   }
 
   async function sendEvent(payload, authenticatedDID) {
-    // Add data to Event payload
-    const ts = payload.meta.ts
-    payload.meta.ts = ts.toString()
-    payload.updated_at = Date.now()
-    payload.created_at = (new Date()).toISOString()
-    payload.app_id = appId
-    payload.did = authenticatedDID.id
-
     // Flatten payload and add original as json string
     let flattened = payload
     try {
@@ -162,31 +148,48 @@ export default function web3Analytics(userConfig) {
     } catch (err) {
       log.error(err)
     }
-    flattened.raw_payload = JSON.stringify(payload)
 
-    log.debug(flattened);
+    let cdbVariables = {
+      app_id: appId,
+      did: authenticatedDID.id,
+      created_at: (new Date()).toISOString(),
+      updated_at: Date.now(),
+      raw_payload: JSON.stringify(payload)
+    }
+    if (flattened.anonymousId) cdbVariables.anonymousId = flattened.anonymousId
+    if (flattened.event) cdbVariables.event = flattened.event
+    if (flattened.meta_ts) cdbVariables.meta_ts = payload.meta.ts.toString()
+    if (flattened.meta_rid) cdbVariables.meta_rid = flattened.meta_rid
+    if (flattened.properties_url) cdbVariables.properties_url = flattened.properties_url
+    if (flattened.properties_hash) cdbVariables.properties_hash = flattened.properties_hash
+    if (flattened.properties_path) cdbVariables.properties_path = flattened.properties_path
+    if (flattened.properties_title) cdbVariables.properties_title = flattened.properties_title
+    if (flattened.properties_referrer) cdbVariables.properties_referrer = flattened.properties_referrer
+    if (flattened.properties_search) cdbVariables.properties_search = flattened.properties_search
+    if (flattened.properties_width) cdbVariables.properties_width = flattened.properties_width
+    if (flattened.properties_height) cdbVariables.properties_height = flattened.properties_height
+    if (flattened.traits_email) cdbVariables.traits_email = flattened.traits_email
+    if (flattened.type) cdbVariables.type = flattened.type
+    if (flattened.userId) cdbVariables.userId = flattened.userId    
+    log.debug(cdbVariables);
 
-    // Create Event in Ceramic
-    const [doc, eventsList] = await Promise.all([
-        model.createTile('Event', flattened),
-        dataStore.get('events'),
-    ])
-
-    // Make ID of Event object part of the object itself
-    const content = doc.content
-    content.id = doc.id.toString()
-    await doc.update(content)
-
-    // Add Event object to Events index
-    const events = eventsList?.events ?? []
-    await dataStore.set('events', {
-        events: [...events, { id: doc.id.toUrl(), updated_at: ts }],
-    })
-
-    // Report update to console
-    const docID = doc.id.toString()
-    log.debug(`New document id: ${docID}`)
-
+    // Create Event using ComposeDB
+    const createResult = await compose.executeQuery(`
+        mutation CreateNewEvent($i: CreateEventInput!){
+            createEvent(input: $i){
+                document{
+                    id
+                }
+            }
+        }
+    `,
+      {
+        "i": {
+          "content": cdbVariables
+        }
+      }
+    )
+    log.debug(JSON.stringify(createResult, null, 2))
   }
   
     
