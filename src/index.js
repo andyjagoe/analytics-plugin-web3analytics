@@ -20,8 +20,7 @@ log.setDefaultLevel("error")
 
 const WEB3ANALYTICS_ADDRESS = '0xd00CCD251869086eCD8B54f328Df1d623369b8F6'
 const WEB3ANALYTICS_PAYMASTER_ADDRESS = '0x1A387Db642a76bEE516f1e16F542ed64ee81772c'
-//const CERAMIC_ADDRESS = 'https://ceramic-clay.3boxlabs.com'
-const CERAMIC_ADDRESS = 'http://localhost:7007'
+const CERAMIC_ADDRESS = 'http://ceramic.web3analytics.network:7007'
 
 
 // Set up Ceramic ComposeDB
