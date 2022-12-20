@@ -6,7 +6,7 @@
     "web3",
     "analytics"
   ],
-  "version": "0.1.16",
+  "version": "0.2.0",
   "license": "(Apache-2.0 OR MIT)",
   "main": "./dist/index.js",
   "repository": {
@@ -30,6 +30,7 @@
   },
   "dependencies": {
     "@ceramicnetwork/http-client": "^2.0.4",
+    "@composedb/client": "^0.3.1",
     "@ethersproject/address": "^5.6.1",
     "@ethersproject/contracts": "^5.6.2",
     "@ethersproject/experimental": "^5.7.0",
