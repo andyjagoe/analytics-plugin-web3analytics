@@ -27,6 +27,9 @@ const analytics = Analytics({
 })
 
 ```
+'loglevel' is an optional attribute and can be set to 'debug', 'info', 'warn' or 'error'.
+
+More on how to get an appId and use Web3 Analytics [here](https://web3-analytics.gitbook.io/product-docs/).
 
 ## License
 
